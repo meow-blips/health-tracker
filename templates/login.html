@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Login — HealthTrack{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i data-lucide="log-in" class="auth-icon"></i>
+                <h1>Welcome Back</h1>
+                <p>Sign in to access your health dashboard</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                <i data-lucide="alert-circle"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/login" class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label for="email">
+                        <i data-lucide="mail" style="width:16px;height:16px"></i> Email
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i data-lucide="lock" style="width:16px;height:16px"></i> Password
+                    </label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                        <i data-lucide="eye" id="password-eye"></i>
+                    </button>
+                </div>
+
+                <div class="form-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="remember" value="true">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="/forgot-password" class="form-link">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i data-lucide="log-in" style="width:18px;height:18px"></i>
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="/register">Create one now</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

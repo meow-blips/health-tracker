@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Sign Up — HealthTrack{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="auth-container">
+        <div class="auth-card auth-card-wide">
+            <div class="auth-header">
+                <i data-lucide="user-plus" class="auth-icon"></i>
+                <h1>Create Your Account</h1>
+                <p>Set up your health profile in 3 easy steps</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                <i data-lucide="alert-circle"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <span>Account</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">2</div>
+                    <span>Body Stats</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="3">
+                    <div class="step-circle">3</div>
+                    <span>Preferences</span>
+                </div>
+            </div>
+
+            <form method="POST" action="/register" class="auth-form" id="registerForm">
+                <!-- Step 1: Credentials -->
+                <div class="form-step active" id="step1">
+                    <div class="form-group">
+                        <label for="full_name">
+                            <i data-lucide="user" style="width:16px;height:16px"></i> Full Name
+                        </label>
+                        <input type="text" id="full_name" name="full_name" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="username">
+                            <i data-lucide="at-sign" style="width:16px;height:16px"></i> Username <span class="required">*</span>
+                        </label>
+                        <input type="text" id="username" name="username" placeholder="johndoe" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg_email">
+                            <i data-lucide="mail" style="width:16px;height:16px"></i> Email <span class="required">*</span>
+                        </label>
+                        <input type="email" id="reg_email" name="email" placeholder="you@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg_password">
+                            <i data-lucide="lock" style="width:16px;height:16px"></i> Password <span class="required">*</span>
+                        </label>
+                        <input type="password" id="reg_password" name="password" placeholder="Min 8 chars, 1 uppercase, 1 number" required minlength="8">
+                        <button type="button" class="password-toggle" onclick="togglePassword('reg_password')">
+                            <i data-lucide="eye"></i>
+                        </button>
+                        <div class="password-strength" id="passwordStrength">
+                            <div class="strength-bar"></div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-block" onclick="nextStep(2)">
+                        Continue <i data-lucide="arrow-right" style="width:18px;height:18px"></i>
+                    </button>
+                </div>
+
+                <!-- Step 2: Physical Stats -->
+                <div class="form-step" id="step2">
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label for="height_cm">
+                                <i data-lucide="ruler" style="width:16px;height:16px"></i> Height (cm)
+                            </label>
+                            <input type="number" id="height_cm" name="height_cm" placeholder="170" step="0.1" min="50" max="300">
+                        </div>
+                        <div class="form-group">
+                            <label for="weight_kg">
+                                <i data-lucide="scale" style="width:16px;height:16px"></i> Weight (kg)
+                            </label>
+                            <input type="number" id="weight_kg" name="weight_kg" placeholder="70" step="0.1" min="10" max="500">
+                        </div>
+                    </div>
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label for="age">
+                                <i data-lucide="cake" style="width:16px;height:16px"></i> Age
+                            </label>
+                            <input type="number" id="age" name="age" placeholder="25" min="1" max="150">
+                        </div>
+                        <div class="form-group">
+                            <label for="gender">
+                                <i data-lucide="user" style="width:16px;height:16px"></i> Gender
+                            </label>
+                            <select id="gender" name="gender">
+                                <option value="">Prefer not to say</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bmi-preview" id="bmiPreview" style="display:none">
+                        <div class="bmi-gauge-mini">
+                            <div class="gauge-track-full">
+                                <div class="gauge-segment seg-under">Under</div>
+                                <div class="gauge-segment seg-healthy">Healthy</div>
+                                <div class="gauge-segment seg-over">Over</div>
+                                <div class="gauge-segment seg-obese">Obese</div>
+                                <div class="gauge-pointer" id="bmiPointer"></div>
+                            </div>
+                            <div class="bmi-value" id="bmiValue"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions-row">
+                        <button type="button" class="btn btn-ghost" onclick="prevStep(1)">
+                            <i data-lucide="arrow-left" style="width:18px;height:18px"></i> Back
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(3)">
+                            Continue <i data-lucide="arrow-right" style="width:18px;height:18px"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Preferences -->
+                <div class="form-step" id="step3">
+                    <div class="pref-toggles">
+                        <label class="toggle-card">
+                            <input type="checkbox" name="notify_meds" value="true" checked>
+                            <div class="toggle-content">
+                                <i data-lucide="pill"></i>
+                                <span>Medication Reminders</span>
+                            </div>
+                        </label>
+                        <label class="toggle-card">
+                            <input type="checkbox" name="notify_periods" value="true" checked>
+                            <div class="toggle-content">
+                                <i data-lucide="heart"></i>
+                                <span>Period Tracking</span>
+                            </div>
+                        </label>
+                        <label class="toggle-card">
+                            <input type="checkbox" name="notify_water" value="true" checked>
+                            <div class="toggle-content">
+                                <i data-lucide="droplets"></i>
+                                <span>Water Reminders</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="form-actions-row">
+                        <button type="button" class="btn btn-ghost" onclick="prevStep(2)">
+                            <i data-lucide="arrow-left" style="width:18px;height:18px"></i> Back
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="check" style="width:18px;height:18px"></i> Create Account
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="/login">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

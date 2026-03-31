@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" data-phase="default">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HealthTrack{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <i data-lucide="heart-pulse" class="brand-icon"></i>
+                <span>HealthTrack</span>
+            </a>
+            <div class="nav-links">
+                {% if user %}
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/api/report/pdf" class="nav-link" target="_blank">
+                        <i data-lucide="download" style="width:16px;height:16px"></i> Report
+                    </a>
+                    <div class="nav-user">
+                        <span class="nav-avatar">{{ (user.full_name or user.username)[0]|upper }}</span>
+                        <span class="nav-username">{{ user.full_name or user.username }}</span>
+                    </div>
+                    <a href="/logout" class="btn btn-outline btn-sm">Logout</a>
+                {% else %}
+                    <a href="/login" class="nav-link">Login</a>
+                    <a href="/register" class="btn btn-primary btn-sm">Get Started</a>
+                {% endif %}
+            </div>
+            <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+                <i data-lucide="menu"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <i data-lucide="heart-pulse"></i>
+                        <span>HealthTrack</span>
+                    </div>
+                    <p>Your comprehensive health companion. Track, analyze, and improve your daily wellness.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Features</h4>
+                    <a href="/#features">Water Tracker</a>
+                    <a href="/#features">Calorie Counter</a>
+                    <a href="/#features">Exercise Log</a>
+                    <a href="/#features">BMI Calculator</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Account</h4>
+                    <a href="/login">Login</a>
+                    <a href="/register">Sign Up</a>
+                    <a href="/forgot-password">Reset Password</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 HealthTrack. Built with FastAPI &amp; Python.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    <script>lucide.createIcons();</script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

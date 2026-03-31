@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — HealthTrack{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="container">
+        <!-- Dashboard Header -->
+        <div class="dash-header">
+            <div>
+                <h1>Good {{ "morning" if true else "evening" }}, <span class="gradient-text">{{ user.full_name or user.username }}</span></h1>
+                <p class="dash-date" id="dashDate"></p>
+            </div>
+            <div class="dash-header-actions">
+                <a href="/api/report/pdf" class="btn btn-outline btn-sm" target="_blank">
+                    <i data-lucide="file-down" style="width:16px;height:16px"></i> Download Report
+                </a>
+                <button class="btn btn-outline btn-sm" onclick="showEmergencyCard()">
+                    <i data-lucide="shield-alert" style="width:16px;height:16px"></i> Emergency Card
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="dash-tabs">
+            <button class="dash-tab active" data-tab="overview" onclick="switchTab('overview')">
+                <i data-lucide="layout-dashboard" style="width:16px;height:16px"></i> Overview
+            </button>
+            <button class="dash-tab" data-tab="log" onclick="switchTab('log')">
+                <i data-lucide="plus-circle" style="width:16px;height:16px"></i> Log Today
+            </button>
+            <button class="dash-tab" data-tab="trends" onclick="switchTab('trends')">
+                <i data-lucide="trending-up" style="width:16px;height:16px"></i> Trends
+            </button>
+            <button class="dash-tab" data-tab="meds" onclick="switchTab('meds')">
+                <i data-lucide="pill" style="width:16px;height:16px"></i> Medications
+            </button>
+            {% if user.gender == "female" %}
+            <button class="dash-tab" data-tab="period" onclick="switchTab('period')">
+                <i data-lucide="heart" style="width:16px;height:16px"></i> Cycle
+            </button>
+            {% endif %}
+            <button class="dash-tab" data-tab="profile" onclick="switchTab('profile')">
+                <i data-lucide="user" style="width:16px;height:16px"></i> Profile
+            </button>
+        </div>
+
+        <!-- ═══════ OVERVIEW TAB ═══════ -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="overview-grid">
+                <!-- Activity Rings -->
+                <div class="card ring-card">
+                    <h3>Today's Progress</h3>
+                    <div class="activity-rings-container">
+                        <svg viewBox="0 0 200 200" class="activity-rings" id="activityRings">
+                            <!-- Water Ring (outer) -->
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="#3b82f6" stroke-width="12"
+                                    id="ringWater" stroke-dasharray="0 553" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+                            <!-- Calories Ring (middle) -->
+                            <circle cx="100" cy="100" r="72" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+                            <circle cx="100" cy="100" r="72" fill="none" stroke="#f59e0b" stroke-width="12"
+                                    id="ringCalories" stroke-dasharray="0 452" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+                            <!-- Exercise Ring (inner) -->
+                            <circle cx="100" cy="100" r="56" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+                            <circle cx="100" cy="100" r="56" fill="none" stroke="#22c55e" stroke-width="12"
+                                    id="ringExercise" stroke-dasharray="0 352" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+                        </svg>
+                        <div class="ring-center-label" id="ringCenter">
+                            <span class="ring-pct" id="ringPct">0%</span>
+                            <span class="ring-sub">complete</span>
+                        </div>
+                    </div>
+                    <div class="ring-legend">
+                        <div class="legend-item"><span class="dot" style="background:#3b82f6"></span> Water <strong id="legendWater">0/8</strong></div>
+                        <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Calories <strong id="legendCal">0</strong></div>
+                        <div class="legend-item"><span class="dot" style="background:#22c55e"></span> Exercise <strong id="legendEx">0 min</strong></div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats Grid -->
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:rgba(59,130,246,.1);color:#3b82f6">
+                            <i data-lucide="droplets"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statWater">0</span>
+                            <span class="stat-label">Glasses of Water</span>
+                        </div>
+                        <button class="stat-action" onclick="quickLogWater()">
+                            <i data-lucide="plus"></i>
+                        </button>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:rgba(245,158,11,.1);color:#f59e0b">
+                            <i data-lucide="flame"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statCal">0</span>
+                            <span class="stat-label">Calories Today</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:rgba(34,197,94,.1);color:#22c55e">
+                            <i data-lucide="dumbbell"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statEx">0</span>
+                            <span class="stat-label">Minutes Exercise</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:rgba(139,92,246,.1);color:#8b5cf6">
+                            <i data-lucide="moon"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statSleep">0</span>
+                            <span class="stat-label">Hours Sleep</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BMI Gauge -->
+                <div class="card bmi-card">
+                    <h3><i data-lucide="scale" style="width:18px;height:18px"></i> BMI Status</h3>
+                    <div class="bmi-gauge" id="bmiGauge">
+                        <div class="gauge-track-full">
+                            <div class="gauge-segment seg-under"></div>
+                            <div class="gauge-segment seg-healthy"></div>
+                            <div class="gauge-segment seg-over"></div>
+                            <div class="gauge-segment seg-obese"></div>
+                            <div class="gauge-pointer" id="dashBmiPointer" style="left:50%"></div>
+                        </div>
+                        <div class="gauge-numbers">
+                            <span>15</span><span>18.5</span><span>25</span><span>30</span><span>40</span>
+                        </div>
+                        <div class="bmi-display">
+                            <span class="bmi-number" id="dashBmiValue">{{ user.bmi or '--' }}</span>
+                            <span class="bmi-cat" id="dashBmiCat">{{ user.bmi_category }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mood -->
+                <div class="card mood-card">
+                    <h3><i data-lucide="smile" style="width:18px;height:18px"></i> Today's Mood</h3>
+                    <div class="mood-faces" id="moodFaces">
+                        <button class="mood-btn" data-mood="1" onclick="logMoodQuick(1)">😞</button>
+                        <button class="mood-btn" data-mood="2" onclick="logMoodQuick(2)">😐</button>
+                        <button class="mood-btn" data-mood="3" onclick="logMoodQuick(3)">🙂</button>
+                        <button class="mood-btn" data-mood="4" onclick="logMoodQuick(4)">😊</button>
+                        <button class="mood-btn" data-mood="5" onclick="logMoodQuick(5)">😄</button>
+                    </div>
+                </div>
+
+                <!-- Consistency Heatmap -->
+                <div class="card heatmap-card">
+                    <h3><i data-lucide="calendar-check" style="width:18px;height:18px"></i> Consistency (Last 90 Days)</h3>
+                    <div class="heatmap-container" id="heatmapContainer">
+                        <div class="heatmap-grid" id="heatmapGrid"></div>
+                        <div class="heatmap-legend">
+                            <span>Less</span>
+                            <div class="heatmap-cell level-0"></div>
+                            <div class="heatmap-cell level-1"></div>
+                            <div class="heatmap-cell level-2"></div>
+                            <div class="heatmap-cell level-3"></div>
+                            <div class="heatmap-cell level-4"></div>
+                            <span>More</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ LOG TAB ═══════ -->
+        <div class="tab-content" id="tab-log">
+            <div class="log-grid">
+                <!-- Water -->
+                <div class="card log-card">
+                    <h3><i data-lucide="droplets" style="width:18px;height:18px;color:#3b82f6"></i> Log Water</h3>
+                    <form onsubmit="return logWater(event)">
+                        <div class="water-quick">
+                            <button type="button" class="water-btn" onclick="addWater(1)">+1 Glass</button>
+                            <button type="button" class="water-btn" onclick="addWater(2)">+2 Glasses</button>
+                            <button type="button" class="water-btn" onclick="addWater(3)">+3 Glasses</button>
+                        </div>
+                        <p class="water-total">Today: <strong id="waterTotal">0</strong> glasses (<span id="waterMl">0</span> ml)</p>
+                    </form>
+                </div>
+
+                <!-- Calories -->
+                <div class="card log-card">
+                    <h3><i data-lucide="flame" style="width:18px;height:18px;color:#f59e0b"></i> Log Meal</h3>
+                    <form onsubmit="return logCalories(event)" id="calorieForm">
+                        <div class="form-group">
+                            <select name="meal_type" required>
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch">Lunch</option>
+                                <option value="dinner">Dinner</option>
+                                <option value="snack">Snack</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="description" placeholder="e.g., 2 eggs and toast" required>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <input type="number" name="calories" placeholder="Calories" required min="0">
+                            </div>
+                            <div class="form-group">
+                                <input type="number" name="protein_g" placeholder="Protein (g)" min="0" step="0.1">
+                            </div>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <input type="number" name="carbs_g" placeholder="Carbs (g)" min="0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <input type="number" name="fat_g" placeholder="Fat (g)" min="0" step="0.1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Add Meal</button>
+                    </form>
+                    <div class="meal-list" id="mealList"></div>
+                </div>
+
+                <!-- Exercise -->
+                <div class="card log-card">
+                    <h3><i data-lucide="dumbbell" style="width:18px;height:18px;color:#22c55e"></i> Log Exercise</h3>
+                    <form onsubmit="return logExercise(event)" id="exerciseForm">
+                        <div class="form-group">
+                            <select name="exercise_type" required>
+                                <option value="walking">Walking</option>
+                                <option value="running">Running</option>
+                                <option value="cycling">Cycling</option>
+                                <option value="swimming">Swimming</option>
+                                <option value="yoga">Yoga</option>
+                                <option value="gym">Gym / Weights</option>
+                                <option value="sports">Sports</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <input type="number" name="duration_min" placeholder="Duration (min)" required min="1">
+                            </div>
+                            <div class="form-group">
+                                <input type="number" name="calories_burned" placeholder="Calories burned" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="notes" placeholder="Notes (optional)">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Log Exercise</button>
+                    </form>
+                </div>
+
+                <!-- Sleep -->
+                <div class="card log-card">
+                    <h3><i data-lucide="moon" style="width:18px;height:18px;color:#8b5cf6"></i> Log Sleep</h3>
+                    <form onsubmit="return logSleep(event)" id="sleepForm">
+                        <div class="form-group">
+                            <label>Hours Slept</label>
+                            <input type="number" name="hours" placeholder="8" min="0" max="24" step="0.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Quality (1-5)</label>
+                            <div class="star-rating" id="sleepStars">
+                                <button type="button" class="star" data-val="1" onclick="setSleepQuality(1)">★</button>
+                                <button type="button" class="star" data-val="2" onclick="setSleepQuality(2)">★</button>
+                                <button type="button" class="star" data-val="3" onclick="setSleepQuality(3)">★</button>
+                                <button type="button" class="star" data-val="4" onclick="setSleepQuality(4)">★</button>
+                                <button type="button" class="star" data-val="5" onclick="setSleepQuality(5)">★</button>
+                            </div>
+                            <input type="hidden" name="quality" id="sleepQualityInput" value="3">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Log Sleep</button>
+                    </form>
+                </div>
+
+                <!-- Mood -->
+                <div class="card log-card">
+                    <h3><i data-lucide="smile" style="width:18px;height:18px;color:#ec4899"></i> Log Mood</h3>
+                    <form onsubmit="return logMood(event)" id="moodForm">
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <label>Mood (1-5)</label>
+                                <input type="range" name="mood" min="1" max="5" value="3">
+                            </div>
+                            <div class="form-group">
+                                <label>Energy (1-5)</label>
+                                <input type="range" name="energy" min="1" max="5" value="3">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Stress (1=Low, 5=High)</label>
+                            <input type="range" name="stress" min="1" max="5" value="3">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="notes" placeholder="How are you feeling?">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Log Mood</button>
+                    </form>
+                </div>
+
+                <!-- Allergies -->
+                <div class="card log-card">
+                    <h3><i data-lucide="shield-alert" style="width:18px;height:18px;color:#ef4444"></i> Manage Allergies</h3>
+                    <form onsubmit="return addAllergy(event)" id="allergyForm">
+                        <div class="form-group">
+                            <input type="text" name="allergen" placeholder="Allergen (e.g., Peanuts)" required>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <select name="severity">
+                                    <option value="mild">Mild</option>
+                                    <option value="moderate" selected>Moderate</option>
+                                    <option value="severe">Severe</option>
+                                    <option value="life-threatening">Life-threatening</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" name="reaction" placeholder="Reaction">
+                            </div>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <input type="text" name="emergency_contact" placeholder="Emergency contact name">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" name="emergency_phone" placeholder="Phone number">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Add Allergy</button>
+                    </form>
+                    <div class="allergy-list" id="allergyList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ TRENDS TAB ═══════ -->
+        <div class="tab-content" id="tab-trends">
+            <div class="trends-grid">
+                <div class="card chart-card">
+                    <h3>Calories vs Exercise (7 Days)</h3>
+                    <canvas id="trendChart" height="300"></canvas>
+                </div>
+                <div class="card chart-card">
+                    <h3>Water Intake (7 Days)</h3>
+                    <canvas id="waterChart" height="300"></canvas>
+                </div>
+                <div class="card chart-card">
+                    <h3>Sleep Hours (7 Days)</h3>
+                    <canvas id="sleepChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ MEDS TAB ═══════ -->
+        <div class="tab-content" id="tab-meds">
+            <div class="meds-layout">
+                <div class="card">
+                    <h3><i data-lucide="pill" style="width:18px;height:18px"></i> Add Medication</h3>
+                    <form onsubmit="return addMedication(event)" id="medForm">
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <input type="text" name="name" placeholder="Medication name" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" name="dosage" placeholder="Dosage (e.g., 500mg)">
+                            </div>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <select name="frequency">
+                                    <option value="daily">Daily</option>
+                                    <option value="twice-daily">Twice Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="as-needed">As Needed</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <select name="time_of_day">
+                                    <option value="morning">Morning</option>
+                                    <option value="afternoon">Afternoon</option>
+                                    <option value="evening">Evening</option>
+                                    <option value="bedtime">Bedtime</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" name="pills_remaining" placeholder="Pills remaining" min="0" value="30">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Add Medication</button>
+                    </form>
+                </div>
+                <div class="card">
+                    <h3>Active Medications</h3>
+                    <div class="med-list" id="medList">
+                        <p class="empty-state">Loading medications...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ PERIOD TAB ═══════ -->
+        {% if user.gender == "female" %}
+        <div class="tab-content" id="tab-period">
+            <div class="period-layout">
+                <div class="card period-phase-card" id="phaseCard">
+                    <h3>Current Cycle Phase</h3>
+                    <div class="phase-visual">
+                        <div class="phase-circle" id="phaseCircle">
+                            <span class="phase-name" id="phaseName">--</span>
+                            <span class="phase-day" id="phaseDay">Day --</span>
+                        </div>
+                        <div class="phase-bar">
+                            <div class="phase-seg menstrual" title="Menstrual (Days 1-5)">M</div>
+                            <div class="phase-seg follicular" title="Follicular (Days 6-13)">F</div>
+                            <div class="phase-seg ovulatory" title="Ovulatory (Days 14-16)">O</div>
+                            <div class="phase-seg luteal" title="Luteal (Days 17-28)">L</div>
+                            <div class="phase-marker" id="phaseMarker" style="left:0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3><i data-lucide="heart" style="width:18px;height:18px"></i> Log Period</h3>
+                    <form onsubmit="return logPeriod(event)" id="periodForm">
+                        <div class="form-group">
+                            <label>Flow Intensity</label>
+                            <select name="flow_intensity">
+                                <option value="spotting">Spotting</option>
+                                <option value="light">Light</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="heavy">Heavy</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Symptoms</label>
+                            <input type="text" name="symptoms" placeholder="e.g., cramps, headache, bloating">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="notes" placeholder="Additional notes">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Log Period Entry</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ═══════ PROFILE TAB ═══════ -->
+        <div class="tab-content" id="tab-profile">
+            <div class="profile-layout">
+                <div class="card profile-card">
+                    <div class="profile-avatar-big">{{ (user.full_name or user.username)[0]|upper }}</div>
+                    <h2>{{ user.full_name or user.username }}</h2>
+                    <p>@{{ user.username }}</p>
+                </div>
+                <div class="card">
+                    <h3>Update Profile</h3>
+                    <form method="POST" action="/profile/update" class="auth-form">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" name="full_name" value="{{ user.full_name or '' }}">
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <label>Height (cm)</label>
+                                <input type="number" name="height_cm" value="{{ user.height_cm or '' }}" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>Weight (kg)</label>
+                                <input type="number" name="weight_kg" value="{{ user.weight_kg or '' }}" step="0.1">
+                            </div>
+                        </div>
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <label>Age</label>
+                                <input type="number" name="age" value="{{ user.age or '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Gender</label>
+                                <select name="gender">
+                                    <option value="" {% if not user.gender %}selected{% endif %}>Prefer not to say</option>
+                                    <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+                                    <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+                                    <option value="other" {% if user.gender == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pref-toggles compact">
+                            <label class="toggle-card">
+                                <input type="checkbox" name="notify_meds" value="true" {% if user.notify_meds %}checked{% endif %}>
+                                <div class="toggle-content"><i data-lucide="pill"></i><span>Med Reminders</span></div>
+                            </label>
+                            <label class="toggle-card">
+                                <input type="checkbox" name="notify_periods" value="true" {% if user.notify_periods %}checked{% endif %}>
+                                <div class="toggle-content"><i data-lucide="heart"></i><span>Period Tracking</span></div>
+                            </label>
+                            <label class="toggle-card">
+                                <input type="checkbox" name="notify_water" value="true" {% if user.notify_water %}checked{% endif %}>
+                                <div class="toggle-content"><i data-lucide="droplets"></i><span>Water Reminders</span></div>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Emergency Card Modal -->
+<div class="modal-overlay" id="emergencyModal" onclick="if(event.target===this)closeEmergencyCard()">
+    <div class="emergency-card-modal">
+        <button class="modal-close" onclick="closeEmergencyCard()">&times;</button>
+        <div class="emergency-header">
+            <i data-lucide="shield-alert" style="width:40px;height:40px"></i>
+            <h2>EMERGENCY MEDICAL CARD</h2>
+        </div>
+        <div class="emergency-name">{{ user.full_name or user.username }}</div>
+        <div class="emergency-allergies" id="emergencyAllergies">
+            <p>Loading allergy information...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const USER_BMI = {{ user.bmi|default('null', true) }};
+    const USER_GENDER = "{{ user.gender or '' }}";
+</script>
+{% endblock %}
