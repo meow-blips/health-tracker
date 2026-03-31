@@ -13,6 +13,7 @@ class Settings:
     RESET_TOKEN_MAX_AGE: int = 3600
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./healthtrack.db")
+    IS_VERCEL: bool = os.getenv("VERCEL", "") == "1"
 
     CORS_ORIGINS: list[str] = os.getenv("CORS_ORIGINS", "http://localhost:8000,http://localhost:8080").split(",")
 
