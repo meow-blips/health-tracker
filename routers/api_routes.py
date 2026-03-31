@@ -8,7 +8,7 @@ from sqlalchemy import func as sqlfunc
 from database import get_db
 from models import (
     User, WaterLog, CalorieLog, ExerciseLog,
-    Medication, MedicationLog, SleepLog, PeriodLog,
+    Medication, MedicationLog, SleepLog, PeriodLog, PeriodSymptomLog,
     Allergy, MoodLog, GoalSettings, WeightLog,
 )
 from routers.auth_routes import get_current_user
@@ -604,19 +604,82 @@ async def get_mood_history(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  PERIOD TRACKER
+#  PERIOD TRACKER — Smart Prediction, Symptoms, Calendar, Insights
 # ═════════════════════════════════════════════════════════════════════════════
 
-def _compute_phase(cycle_day: int) -> str:
-    if cycle_day <= 5:
+PERIOD_SYMPTOMS = [
+    "cramps", "headache", "bloating", "fatigue", "mood swings",
+    "back pain", "nausea", "breast tenderness", "acne", "insomnia",
+    "cravings", "dizziness", "irritability", "anxiety",
+]
+
+PHASE_EXERCISE_TIPS = {
+    "menstrual": "You may feel lower energy. Consider light walks, gentle yoga, or stretching.",
+    "follicular": "Energy is rising — great time for cardio, running, or trying something new!",
+    "ovulatory": "Peak energy! Push with HIIT, strength training, or group sports.",
+    "luteal": "Energy may dip toward the end. Moderate exercise like swimming or pilates works best.",
+}
+
+
+def _compute_phase(cycle_day: int, cycle_length: int = 28) -> str:
+    ratio = cycle_day / max(cycle_length, 21)
+    if ratio <= 5 / 28:
         return "menstrual"
-    if cycle_day <= 13:
+    if ratio <= 13 / 28:
         return "follicular"
-    if cycle_day <= 16:
+    if ratio <= 16 / 28:
         return "ovulatory"
-    if cycle_day <= 28:
-        return "luteal"
-    return "follicular"
+    return "luteal"
+
+
+def _estimate_cycle_length(user_id: int, db: Session) -> int:
+    starts = db.query(PeriodLog.date).filter(
+        PeriodLog.user_id == user_id,
+        PeriodLog.cycle_day == 1,
+    ).order_by(PeriodLog.date.desc()).limit(6).all()
+    if len(starts) < 2:
+        return 28
+    dates = sorted([s[0] for s in starts])
+    diffs = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
+    valid = [d for d in diffs if 20 <= d <= 45]
+    return round(sum(valid) / len(valid)) if valid else 28
+
+
+def _predict_next_period(user_id: int, db: Session, cycle_length: int) -> date | None:
+    last_start = db.query(PeriodLog.date).filter(
+        PeriodLog.user_id == user_id,
+        PeriodLog.cycle_day == 1,
+    ).order_by(PeriodLog.date.desc()).first()
+    if not last_start:
+        return None
+    return last_start[0] + timedelta(days=cycle_length)
+
+
+def _detect_irregularity(user_id: int, db: Session, cycle_length: int) -> dict | None:
+    starts = db.query(PeriodLog.date).filter(
+        PeriodLog.user_id == user_id,
+        PeriodLog.cycle_day == 1,
+    ).order_by(PeriodLog.date.desc()).limit(6).all()
+    if len(starts) < 3:
+        return None
+    dates = sorted([s[0] for s in starts])
+    diffs = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
+    avg = sum(diffs) / len(diffs)
+    latest = diffs[-1]
+    deviation = abs(latest - avg)
+    if deviation > 7:
+        return {
+            "alert": True,
+            "message": f"Your latest cycle was {latest} days, which is {int(deviation)} days off your average of {int(avg)} days. Consider consulting a healthcare provider.",
+            "latest_length": latest,
+            "average": round(avg, 1),
+        }
+    return None
+
+
+def _get_fertile_window(next_period: date, cycle_length: int) -> tuple[date, date]:
+    ovulation_day = next_period - timedelta(days=14)
+    return (ovulation_day - timedelta(days=5), ovulation_day + timedelta(days=1))
 
 
 @router.post("/period")
@@ -629,20 +692,21 @@ async def log_period(
 ):
     user = require_user(request, db)
     today = date.today()
+    cycle_length = _estimate_cycle_length(user.user_id, db)
 
-    last_period = db.query(PeriodLog).filter(
+    last_start = db.query(PeriodLog).filter(
         PeriodLog.user_id == user.user_id,
-        PeriodLog.flow_intensity.in_(["light", "medium", "heavy"]),
+        PeriodLog.cycle_day == 1,
     ).order_by(PeriodLog.date.desc()).first()
 
     cycle_day = 1
     phase = "menstrual"
-    if last_period and last_period.date != today:
-        days_diff = (today - last_period.date).days
-        cycle_day = days_diff + 1
-        if cycle_day > 28:
+    if last_start and last_start.date != today:
+        days_diff = (today - last_start.date).days
+        cycle_day = (days_diff % cycle_length) + 1
+        if cycle_day > cycle_length:
             cycle_day = 1
-        phase = _compute_phase(cycle_day)
+        phase = _compute_phase(cycle_day, cycle_length)
 
     log = db.query(PeriodLog).filter(
         PeriodLog.user_id == user.user_id, PeriodLog.date == today
@@ -670,22 +734,41 @@ async def get_period_phase(request: Request, db: Session = Depends(get_db)):
         PeriodLog.user_id == user.user_id
     ).order_by(PeriodLog.date.desc()).first()
     if not log:
-        return JSONResponse({"phase": None, "cycle_day": None, "next_period_date": None, "cycle_length": None})
-
-    days_since = (date.today() - log.date).days
-    cycle_day = (log.cycle_day or 1) + days_since
-    if cycle_day > 28:
-        cycle_day = (cycle_day % 28) or 1
-    phase = _compute_phase(cycle_day)
+        return JSONResponse({
+            "phase": None, "cycle_day": None, "next_period_date": None,
+            "cycle_length": None, "days_until_period": None,
+            "irregularity": None, "exercise_tip": None, "fertile_window": None,
+        })
 
     cycle_length = _estimate_cycle_length(user.user_id, db)
+    days_since = (date.today() - log.date).days
+    cycle_day = (log.cycle_day or 1) + days_since
+    if cycle_day > cycle_length:
+        cycle_day = ((cycle_day - 1) % cycle_length) + 1
+    phase = _compute_phase(cycle_day, cycle_length)
+
     next_period = _predict_next_period(user.user_id, db, cycle_length)
+    days_until = (next_period - date.today()).days if next_period else None
+    if days_until is not None and days_until < 0:
+        days_until = 0
+
+    irregularity = _detect_irregularity(user.user_id, db, cycle_length)
+    fertile_start, fertile_end = (None, None)
+    if next_period:
+        fertile_start, fertile_end = _get_fertile_window(next_period, cycle_length)
 
     return JSONResponse({
         "phase": phase,
         "cycle_day": cycle_day,
-        "next_period_date": next_period.isoformat() if next_period else None,
         "cycle_length": cycle_length,
+        "next_period_date": next_period.isoformat() if next_period else None,
+        "days_until_period": days_until,
+        "irregularity": irregularity,
+        "exercise_tip": PHASE_EXERCISE_TIPS.get(phase),
+        "fertile_window": {
+            "start": fertile_start.isoformat(),
+            "end": fertile_end.isoformat(),
+        } if fertile_start else None,
     })
 
 
@@ -707,28 +790,187 @@ async def get_period_history(
     } for l in logs])
 
 
-def _estimate_cycle_length(user_id: int, db: Session) -> int:
-    """Estimate average cycle length from menstrual-phase start dates."""
-    starts = db.query(PeriodLog.date).filter(
-        PeriodLog.user_id == user_id,
-        PeriodLog.cycle_day == 1,
-    ).order_by(PeriodLog.date.desc()).limit(6).all()
-    if len(starts) < 2:
-        return 28
-    dates = sorted([s[0] for s in starts])
-    diffs = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
-    valid = [d for d in diffs if 20 <= d <= 40]
-    return round(sum(valid) / len(valid)) if valid else 28
+@router.get("/period/calendar")
+async def get_period_calendar(
+    request: Request,
+    month: int = Query(None, ge=1, le=12),
+    year: int = Query(None, ge=2020, le=2030),
+    db: Session = Depends(get_db),
+):
+    user = require_user(request, db)
+    today = date.today()
+    m = month or today.month
+    y = year or today.year
+
+    first_day = date(y, m, 1)
+    if m == 12:
+        last_day = date(y + 1, 1, 1) - timedelta(days=1)
+    else:
+        last_day = date(y, m + 1, 1) - timedelta(days=1)
+
+    logs = db.query(PeriodLog).filter(
+        PeriodLog.user_id == user.user_id,
+        PeriodLog.date >= first_day, PeriodLog.date <= last_day,
+    ).all()
+    period_dates = {l.date.isoformat(): l.flow_intensity for l in logs}
+
+    symptoms = db.query(PeriodSymptomLog).filter(
+        PeriodSymptomLog.user_id == user.user_id,
+        PeriodSymptomLog.date >= first_day, PeriodSymptomLog.date <= last_day,
+    ).all()
+    symptom_dates = {}
+    for s in symptoms:
+        key = s.date.isoformat()
+        symptom_dates.setdefault(key, []).append({"symptom": s.symptom, "severity": s.severity})
+
+    cycle_length = _estimate_cycle_length(user.user_id, db)
+    next_period = _predict_next_period(user.user_id, db, cycle_length)
+    fertile_window = None
+    predicted_period_dates = []
+    if next_period:
+        fw_start, fw_end = _get_fertile_window(next_period, cycle_length)
+        fertile_window = {"start": fw_start.isoformat(), "end": fw_end.isoformat()}
+        for i in range(5):
+            d = next_period + timedelta(days=i)
+            if first_day <= d <= last_day:
+                predicted_period_dates.append(d.isoformat())
+
+    return JSONResponse({
+        "month": m, "year": y,
+        "period_dates": period_dates,
+        "symptom_dates": symptom_dates,
+        "predicted_period": predicted_period_dates,
+        "fertile_window": fertile_window,
+        "cycle_length": cycle_length,
+    })
 
 
-def _predict_next_period(user_id: int, db: Session, cycle_length: int) -> date | None:
-    last_start = db.query(PeriodLog.date).filter(
-        PeriodLog.user_id == user_id,
-        PeriodLog.cycle_day == 1,
-    ).order_by(PeriodLog.date.desc()).first()
-    if not last_start:
-        return None
-    return last_start[0] + timedelta(days=cycle_length)
+@router.post("/period/symptom")
+async def log_period_symptom(
+    request: Request,
+    symptom: str = Form(...),
+    severity: int = Form(2),
+    log_date: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    user = require_user(request, db)
+    d = date.fromisoformat(log_date) if log_date else date.today()
+    severity = max(1, min(3, severity))
+
+    existing = db.query(PeriodSymptomLog).filter(
+        PeriodSymptomLog.user_id == user.user_id,
+        PeriodSymptomLog.date == d,
+        PeriodSymptomLog.symptom == symptom,
+    ).first()
+    if existing:
+        existing.severity = severity
+    else:
+        db.add(PeriodSymptomLog(
+            user_id=user.user_id, date=d,
+            symptom=symptom[:100], severity=severity,
+        ))
+    db.commit()
+    return JSONResponse({"ok": True, "date": d.isoformat(), "symptom": symptom})
+
+
+@router.get("/period/symptoms")
+async def get_period_symptoms(
+    request: Request,
+    log_date: str = Query(None),
+    db: Session = Depends(get_db),
+):
+    user = require_user(request, db)
+    d = date.fromisoformat(log_date) if log_date else date.today()
+    symptoms = db.query(PeriodSymptomLog).filter(
+        PeriodSymptomLog.user_id == user.user_id,
+        PeriodSymptomLog.date == d,
+    ).all()
+    return JSONResponse([{
+        "id": s.id, "symptom": s.symptom, "severity": s.severity,
+    } for s in symptoms])
+
+
+@router.delete("/period/symptom/{symptom_id}")
+async def delete_period_symptom(symptom_id: int, request: Request, db: Session = Depends(get_db)):
+    user = require_user(request, db)
+    s = db.query(PeriodSymptomLog).filter(
+        PeriodSymptomLog.id == symptom_id,
+        PeriodSymptomLog.user_id == user.user_id,
+    ).first()
+    if not s:
+        raise HTTPException(404, "Symptom not found")
+    db.delete(s)
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.get("/period/insights")
+async def get_period_insights(request: Request, db: Session = Depends(get_db)):
+    user = require_user(request, db)
+    today = date.today()
+    lookback = today - timedelta(days=90)
+
+    cycle_length = _estimate_cycle_length(user.user_id, db)
+    irregularity = _detect_irregularity(user.user_id, db, cycle_length)
+
+    period_logs = db.query(PeriodLog).filter(
+        PeriodLog.user_id == user.user_id,
+        PeriodLog.date >= lookback,
+    ).all()
+
+    phase_exercise = {}
+    phase_mood = {}
+    for pl in period_logs:
+        if not pl.phase:
+            continue
+        ex = db.query(sqlfunc.sum(ExerciseLog.duration_min)).filter(
+            ExerciseLog.user_id == user.user_id,
+            ExerciseLog.date == pl.date,
+        ).scalar() or 0
+        mood_row = db.query(MoodLog.energy).filter(
+            MoodLog.user_id == user.user_id,
+            MoodLog.date == pl.date,
+        ).first()
+        energy = mood_row[0] if mood_row else None
+
+        phase_exercise.setdefault(pl.phase, []).append(ex)
+        if energy is not None:
+            phase_mood.setdefault(pl.phase, []).append(energy)
+
+    phase_stats = {}
+    for p in ["menstrual", "follicular", "ovulatory", "luteal"]:
+        ex_vals = phase_exercise.get(p, [])
+        en_vals = phase_mood.get(p, [])
+        phase_stats[p] = {
+            "avg_exercise_min": round(sum(ex_vals) / len(ex_vals), 1) if ex_vals else 0,
+            "avg_energy": round(sum(en_vals) / len(en_vals), 1) if en_vals else None,
+            "exercise_tip": PHASE_EXERCISE_TIPS.get(p, ""),
+        }
+
+    symptom_freq = db.query(
+        PeriodSymptomLog.symptom,
+        sqlfunc.count(PeriodSymptomLog.id).label("count"),
+    ).filter(
+        PeriodSymptomLog.user_id == user.user_id,
+        PeriodSymptomLog.date >= lookback,
+    ).group_by(PeriodSymptomLog.symptom).order_by(
+        sqlfunc.count(PeriodSymptomLog.id).desc()
+    ).limit(8).all()
+
+    return JSONResponse({
+        "cycle_length": cycle_length,
+        "irregularity": irregularity,
+        "phase_stats": phase_stats,
+        "top_symptoms": [{"symptom": s, "count": c} for s, c in symptom_freq],
+    })
+
+
+@router.post("/period/discreet")
+async def toggle_discreet_mode(request: Request, db: Session = Depends(get_db)):
+    user = require_user(request, db)
+    user.discreet_mode = not (user.discreet_mode or False)
+    db.commit()
+    return JSONResponse({"discreet_mode": user.discreet_mode})
 
 
 # ═════════════════════════════════════════════════════════════════════════════

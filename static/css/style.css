@@ -1107,21 +1107,26 @@ img { max-width: 100%; display: block; }
 .empty-state { text-align: center; color: var(--text-light); font-size: 14px; padding: 24px; font-weight: 600; }
 
 /* ─── Period Tab ─────────────────────────────────────────────────────────── */
-.period-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-@media (max-width: 768px) { .period-layout { grid-template-columns: 1fr; } }
+.period-top-row, .period-bottom-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; margin-bottom: 20px;
+}
+@media (max-width: 768px) { .period-top-row, .period-bottom-row { grid-template-columns: 1fr; } }
+
+.period-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.period-card-header h3 { margin-bottom: 0; }
 
 .phase-visual { text-align: center; }
 .phase-circle {
-    width: 150px; height: 150px; border-radius: 50%;
-    margin: 0 auto 20px; display: flex; flex-direction: column;
+    width: 130px; height: 130px; border-radius: 50%;
+    margin: 0 auto 16px; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     border: 4px solid var(--primary);
     transition: border-color .5s, box-shadow .5s;
     background: rgba(255,255,255,.03);
     box-shadow: 0 0 25px rgba(124,92,252,.15);
 }
-.phase-name { font-size: 20px; font-weight: 900; color: var(--primary-light); text-transform: capitalize; }
-.phase-day { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.phase-name { font-size: 18px; font-weight: 900; color: var(--primary-light); text-transform: capitalize; }
+.phase-day { font-size: 12px; color: var(--text-muted); font-weight: 600; }
 
 .phase-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; position: relative; margin-top: 12px; }
 .phase-seg { flex: 1; font-size: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; }
@@ -1135,6 +1140,135 @@ img { max-width: 100%; display: block; }
     transform: translateX(-50%); transition: left .5s ease;
     box-shadow: 0 0 10px rgba(255,255,255,.3);
 }
+
+.phase-tip {
+    display: flex; align-items: flex-start; gap: 8px; margin-top: 16px;
+    padding: 12px; border-radius: var(--radius-sm);
+    background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.15);
+    font-size: 13px; font-weight: 600; color: var(--accent-green); line-height: 1.5;
+}
+
+/* Countdown Ring */
+.period-countdown-card { text-align: center; }
+.countdown-ring-wrap { position: relative; width: 120px; height: 120px; margin: 16px auto; }
+.countdown-ring { width: 100%; height: 100%; }
+.countdown-inner {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+}
+.countdown-days { font-size: 32px; font-weight: 900; color: var(--accent-pink); line-height: 1; }
+.countdown-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+.countdown-date { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+
+.irregularity-alert {
+    display: flex; align-items: flex-start; gap: 8px; margin-top: 14px;
+    padding: 12px; border-radius: var(--radius-sm);
+    background: rgba(251,113,133,.1); border: 1px solid rgba(251,113,133,.2);
+    font-size: 13px; font-weight: 600; color: var(--accent-red); line-height: 1.5;
+}
+
+/* Interactive Calendar */
+.period-calendar-card { margin-bottom: 20px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-header h3 { margin-bottom: 0; font-size: 18px; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.cal-legend-item { display: flex; align-items: center; gap: 5px; }
+.cal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.cal-dot-period { background: #f43f5e; }
+.cal-dot-fertile { background: rgba(56,189,248,.5); }
+.cal-dot-predicted { background: rgba(244,114,182,.4); border: 2px dashed #f472b6; }
+.cal-dot-symptom { background: #fbbf24; }
+
+.cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+}
+.cal-day-header {
+    text-align: center; font-size: 11px; font-weight: 800; color: var(--text-light);
+    text-transform: uppercase; padding: 6px 0;
+}
+.cal-day {
+    aspect-ratio: 1; border-radius: var(--radius-sm);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--text-muted);
+    cursor: pointer; transition: all .2s; position: relative;
+    background: rgba(255,255,255,.02); border: 1px solid transparent;
+}
+.cal-day:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+.cal-day.today { border-color: var(--primary); box-shadow: 0 0 12px rgba(124,92,252,.2); }
+.cal-day.empty { cursor: default; background: transparent; }
+.cal-day.empty:hover { background: transparent; border-color: transparent; }
+.cal-day.period-day { background: rgba(244,63,94,.15); color: #fb7185; border-color: rgba(244,63,94,.25); }
+.cal-day.period-day.heavy { background: rgba(244,63,94,.25); }
+.cal-day.fertile-day { background: rgba(56,189,248,.08); border-color: rgba(56,189,248,.2); }
+.cal-day.predicted-day { background: rgba(244,114,182,.08); border: 1px dashed rgba(244,114,182,.3); }
+.cal-day.has-symptoms::after {
+    content: ''; position: absolute; bottom: 3px;
+    width: 5px; height: 5px; border-radius: 50%; background: #fbbf24;
+}
+[data-theme="light"] .cal-day { background: rgba(0,0,0,.02); }
+[data-theme="light"] .cal-day:hover { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.08); }
+[data-theme="light"] .cal-day.period-day { background: rgba(244,63,94,.1); }
+[data-theme="light"] .cal-day.fertile-day { background: rgba(56,189,248,.06); }
+[data-theme="light"] .cal-day.predicted-day { background: rgba(244,114,182,.06); }
+
+/* Symptom Modal */
+.symptom-modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+}
+.symptom-modal { max-width: 420px; width: 90%; padding: 28px; }
+.symptom-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.symptom-modal-header h3 { margin-bottom: 0; font-size: 16px; }
+.symptom-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.symptom-chip {
+    padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+    cursor: pointer; transition: all .2s; color: var(--text-muted);
+}
+.symptom-chip:hover { background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.3); color: #fbbf24; }
+.symptom-chip.active { background: rgba(251,191,36,.15); border-color: #fbbf24; color: #fbbf24; }
+[data-theme="light"] .symptom-chip { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.08); }
+[data-theme="light"] .symptom-chip:hover { background: rgba(251,191,36,.1); }
+
+.symptom-logged { display: flex; flex-direction: column; gap: 6px; }
+.symptom-logged-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    background: rgba(251,191,36,.08); font-size: 13px; font-weight: 600;
+}
+.symptom-logged-item button {
+    background: none; border: none; cursor: pointer; color: var(--accent-red); font-weight: 800; font-size: 14px; padding: 0 4px;
+}
+
+/* Insights */
+.period-insights-card .insight-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600;
+}
+.period-insights-card .insight-row:last-child { border-bottom: none; }
+.insight-phase-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.insight-phase-dot.menstrual { background: #f43f5e; }
+.insight-phase-dot.follicular { background: #22c55e; }
+.insight-phase-dot.ovulatory { background: #f59e0b; }
+.insight-phase-dot.luteal { background: #8b5cf6; }
+
+.top-symptom-bar {
+    height: 6px; border-radius: 3px; background: rgba(251,191,36,.25); margin-top: 4px;
+}
+
+/* Discreet Mode */
+.discreet .period-term { font-size: 0; }
+.discreet .period-term::before { font-size: 13px; }
+.discreet .period-label .period-term::before { content: "Wellness"; }
+.discreet .phase-seg.menstrual .period-term::before { content: "1"; }
+.discreet .phase-seg.follicular .period-term::before { content: "2"; }
+.discreet .phase-seg.ovulatory .period-term::before { content: "3"; }
+.discreet .phase-seg.luteal .period-term::before { content: "4"; }
+.discreet .cal-legend-item .period-term::before { content: "Cycle days"; }
+.discreet .period-countdown-card .period-term::before { content: "Next phase"; }
+.discreet .period-label:has(i[data-lucide="edit-3"]) .period-term::before { content: "Log Entry"; }
+.discreet button .period-term::before { content: "Log Entry"; }
 
 /* ─── Profile Tab ────────────────────────────────────────────────────────── */
 .profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }

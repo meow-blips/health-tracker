@@ -35,6 +35,7 @@ class User(Base):
     notify_meds = Column(Boolean, default=True)
     notify_periods = Column(Boolean, default=True)
     notify_water = Column(Boolean, default=True)
+    discreet_mode = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
 
     water_logs = relationship("WaterLog", back_populates="user", cascade="all, delete-orphan")
@@ -44,6 +45,7 @@ class User(Base):
     med_logs = relationship("MedicationLog", back_populates="user", cascade="all, delete-orphan")
     sleep_logs = relationship("SleepLog", back_populates="user", cascade="all, delete-orphan")
     period_logs = relationship("PeriodLog", back_populates="user", cascade="all, delete-orphan")
+    period_symptoms = relationship("PeriodSymptomLog", back_populates="user", cascade="all, delete-orphan")
     allergies = relationship("Allergy", back_populates="user", cascade="all, delete-orphan")
     mood_logs = relationship("MoodLog", back_populates="user", cascade="all, delete-orphan")
     goals = relationship("GoalSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -167,6 +169,19 @@ class PeriodLog(Base):
     notes = Column(Text)
 
     user = relationship("User", back_populates="period_logs")
+
+
+class PeriodSymptomLog(Base):
+    __tablename__ = "period_symptom_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    date = Column(Date, nullable=False)
+    symptom = Column(String(100), nullable=False)
+    severity = Column(Integer, default=2)  # 1=mild 2=moderate 3=severe
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="period_symptoms")
 
 
 class Allergy(Base):

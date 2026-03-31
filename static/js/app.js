@@ -162,7 +162,7 @@ function switchTab(name) {
 
     if (name === 'trends') loadTrends();
     if (name === 'meds') loadMedications();
-    if (name === 'period') loadPeriodPhase();
+    if (name === 'period') { loadPeriodPhase(); loadPeriodCalendar(); loadPeriodInsights(); applyDiscreetMode(); }
     if (name === 'overview') refreshOverview();
     if (name === 'log') { loadAllergies(); }
 
@@ -175,7 +175,12 @@ async function initDashboard() {
     await refreshOverview();
     loadHeatmap();
     loadAllergies();
-    if (typeof USER_GENDER !== 'undefined' && USER_GENDER === 'female') loadPeriodPhase();
+    if (typeof USER_GENDER !== 'undefined' && USER_GENDER === 'female') {
+        loadPeriodPhase();
+        loadPeriodCalendar();
+        loadPeriodInsights();
+        applyDiscreetMode();
+    }
     updateBmiGauge();
 
     const params = new URLSearchParams(window.location.search);
@@ -497,7 +502,22 @@ async function deleteMed(id) {
     loadMedications();
 }
 
-// ─── Period Tracker ─────────────────────────────────────────────────────────
+// ─── Period Tracker (Smart Prediction, Calendar, Symptoms, Insights) ────────
+
+const PHASE_COLORS = {
+    menstrual: '#f43f5e', follicular: '#22c55e',
+    ovulatory: '#f59e0b', luteal: '#8b5cf6'
+};
+
+const SYMPTOM_LIST = [
+    'cramps', 'headache', 'bloating', 'fatigue', 'mood swings',
+    'back pain', 'nausea', 'breast tenderness', 'acne', 'insomnia',
+    'cravings', 'dizziness', 'irritability', 'anxiety'
+];
+
+let calMonth = new Date().getMonth() + 1;
+let calYear = new Date().getFullYear();
+let symptomModalDate = null;
 
 async function logPeriod(e) {
     e.preventDefault();
@@ -507,6 +527,7 @@ async function logPeriod(e) {
     if (data) {
         showToast(`Logged: ${data.phase} (Day ${data.cycle_day})`);
         loadPeriodPhase();
+        loadPeriodCalendar();
     }
     return false;
 }
@@ -515,24 +536,271 @@ async function loadPeriodPhase() {
     const data = await apiGet('/api/period/phase');
     if (!data || !data.phase) return;
 
-    setText('phaseName', data.phase.charAt(0).toUpperCase() + data.phase.slice(1));
+    const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '--';
+    setText('phaseName', cap(data.phase));
     setText('phaseDay', `Day ${data.cycle_day}`);
 
-    const phaseColors = {
-        menstrual: '#f43f5e', follicular: '#22c55e',
-        ovulatory: '#f59e0b', luteal: '#8b5cf6'
-    };
     const circle = document.getElementById('phaseCircle');
-    if (circle) circle.style.borderColor = phaseColors[data.phase] || '#6366f1';
-
+    if (circle) {
+        circle.style.borderColor = PHASE_COLORS[data.phase] || '#6366f1';
+        circle.style.boxShadow = `0 0 25px ${PHASE_COLORS[data.phase] || '#6366f1'}30`;
+    }
     const phaseName = document.getElementById('phaseName');
-    if (phaseName) phaseName.style.color = phaseColors[data.phase] || '#6366f1';
+    if (phaseName) phaseName.style.color = PHASE_COLORS[data.phase] || '#6366f1';
 
     document.documentElement.setAttribute('data-phase', data.phase);
 
-    const pct = Math.min(((data.cycle_day || 1) - 1) / 27 * 100, 100);
+    const cycleLen = data.cycle_length || 28;
+    const pct = Math.min(((data.cycle_day || 1) - 1) / (cycleLen - 1) * 100, 100);
     const marker = document.getElementById('phaseMarker');
     if (marker) marker.style.left = pct + '%';
+
+    // Countdown ring
+    const daysUntil = data.days_until_period;
+    setText('countdownDays', daysUntil != null ? daysUntil : '--');
+    if (data.next_period_date) {
+        const nd = new Date(data.next_period_date + 'T00:00:00');
+        setText('countdownDate', nd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+    }
+
+    const arc = document.getElementById('countdownArc');
+    if (arc && daysUntil != null) {
+        const circumference = 2 * Math.PI * 52;
+        const progress = Math.max(0, 1 - (daysUntil / cycleLen));
+        arc.style.strokeDashoffset = circumference * (1 - progress);
+    }
+
+    // Exercise tip
+    const tipEl = document.getElementById('phaseTip');
+    const tipText = document.getElementById('phaseTipText');
+    if (tipEl && tipText && data.exercise_tip) {
+        tipText.textContent = data.exercise_tip;
+        tipEl.style.display = 'flex';
+    }
+
+    // Irregularity alert
+    const alertEl = document.getElementById('irregularityAlert');
+    const alertText = document.getElementById('irregularityText');
+    if (alertEl && alertText) {
+        if (data.irregularity && data.irregularity.alert) {
+            alertText.textContent = data.irregularity.message;
+            alertEl.style.display = 'flex';
+        } else {
+            alertEl.style.display = 'none';
+        }
+    }
+}
+
+// ─── Interactive Calendar ──────────────────────────────────
+
+async function loadPeriodCalendar() {
+    const data = await apiGet(`/api/period/calendar?month=${calMonth}&year=${calYear}`);
+    if (!data) return;
+
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    setText('calMonthTitle', `${monthNames[calMonth - 1]} ${calYear}`);
+
+    const grid = document.getElementById('calGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const dayHeaders = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    dayHeaders.forEach(d => {
+        const el = document.createElement('div');
+        el.className = 'cal-day-header';
+        el.textContent = d;
+        grid.appendChild(el);
+    });
+
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const fertileStart = data.fertile_window ? data.fertile_window.start : null;
+    const fertileEnd = data.fertile_window ? data.fertile_window.end : null;
+    const predictedSet = new Set(data.predicted_period || []);
+
+    for (let i = 0; i < firstDay; i++) {
+        const el = document.createElement('div');
+        el.className = 'cal-day empty';
+        grid.appendChild(el);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const el = document.createElement('div');
+        el.className = 'cal-day';
+        el.textContent = day;
+
+        if (dateStr === todayStr) el.classList.add('today');
+
+        const flow = data.period_dates[dateStr];
+        if (flow) {
+            el.classList.add('period-day');
+            if (flow === 'heavy') el.classList.add('heavy');
+        }
+
+        if (fertileStart && fertileEnd && dateStr >= fertileStart && dateStr <= fertileEnd && !flow) {
+            el.classList.add('fertile-day');
+        }
+
+        if (predictedSet.has(dateStr) && !flow) {
+            el.classList.add('predicted-day');
+        }
+
+        if (data.symptom_dates[dateStr]) {
+            el.classList.add('has-symptoms');
+        }
+
+        el.addEventListener('click', () => openSymptomModal(dateStr));
+        grid.appendChild(el);
+    }
+}
+
+function changeCalMonth(delta) {
+    calMonth += delta;
+    if (calMonth > 12) { calMonth = 1; calYear++; }
+    if (calMonth < 1) { calMonth = 12; calYear--; }
+    loadPeriodCalendar();
+    lucide.createIcons();
+}
+
+// ─── Symptom Quick-Log Modal ───────────────────────────────
+
+async function openSymptomModal(dateStr) {
+    symptomModalDate = dateStr;
+    const d = new Date(dateStr + 'T00:00:00');
+    setText('symptomModalDate', d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+
+    const chips = document.getElementById('symptomChips');
+    chips.innerHTML = '';
+    SYMPTOM_LIST.forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'symptom-chip';
+        chip.textContent = s;
+        chip.addEventListener('click', () => logSymptomChip(s, chip));
+        chips.appendChild(chip);
+    });
+
+    document.getElementById('symptomModal').style.display = 'flex';
+    await loadSymptomsForDate(dateStr);
+}
+
+function closeSymptomModal() {
+    document.getElementById('symptomModal').style.display = 'none';
+    symptomModalDate = null;
+}
+
+async function logSymptomChip(symptom, chipEl) {
+    const fd = new FormData();
+    fd.append('symptom', symptom);
+    fd.append('severity', 2);
+    fd.append('log_date', symptomModalDate);
+    const res = await apiPost('/api/period/symptom', fd);
+    if (res) {
+        chipEl.classList.add('active');
+        showToast(`Logged: ${symptom}`);
+        await loadSymptomsForDate(symptomModalDate);
+        loadPeriodCalendar();
+    }
+}
+
+async function loadSymptomsForDate(dateStr) {
+    const data = await apiGet(`/api/period/symptoms?log_date=${dateStr}`);
+    const logged = document.getElementById('symptomLogged');
+    if (!logged || !data) return;
+    logged.innerHTML = '';
+    if (data.length === 0) {
+        logged.innerHTML = '<p style="font-size:13px;color:var(--text-muted);text-align:center">No symptoms logged for this date</p>';
+        return;
+    }
+    data.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'symptom-logged-item';
+        const severityLabels = { 1: 'Mild', 2: 'Moderate', 3: 'Severe' };
+        row.innerHTML = `<span>${s.symptom} <small style="color:var(--text-light)">(${severityLabels[s.severity] || 'Moderate'})</small></span>
+            <button onclick="deleteSymptom(${s.id})">&times;</button>`;
+        logged.appendChild(row);
+    });
+
+    document.querySelectorAll('.symptom-chip').forEach(chip => {
+        const isLogged = data.some(s => s.symptom === chip.textContent);
+        chip.classList.toggle('active', isLogged);
+    });
+}
+
+async function deleteSymptom(id) {
+    const res = await apiDelete(`/api/period/symptom/${id}`);
+    if (res) {
+        await loadSymptomsForDate(symptomModalDate);
+        loadPeriodCalendar();
+    }
+}
+
+// ─── Cycle Insights ────────────────────────────────────────
+
+async function loadPeriodInsights() {
+    const data = await apiGet('/api/period/insights');
+    const el = document.getElementById('insightsContent');
+    if (!el || !data) return;
+
+    let html = '';
+    html += `<div class="insight-row"><strong>Avg cycle length:</strong>&nbsp;${data.cycle_length} days</div>`;
+
+    if (data.irregularity && data.irregularity.alert) {
+        html += `<div class="insight-row" style="color:var(--accent-red)">
+            <i data-lucide="alert-triangle" style="width:14px;height:14px;flex-shrink:0"></i>&nbsp;${data.irregularity.message}</div>`;
+    }
+
+    const phases = ['menstrual', 'follicular', 'ovulatory', 'luteal'];
+    const phaseLabels = { menstrual: 'Menstrual', follicular: 'Follicular', ovulatory: 'Ovulatory', luteal: 'Luteal' };
+    phases.forEach(p => {
+        const ps = data.phase_stats[p];
+        if (!ps) return;
+        let detail = `Avg exercise: ${ps.avg_exercise_min} min`;
+        if (ps.avg_energy != null) detail += ` | Energy: ${ps.avg_energy}/5`;
+        html += `<div class="insight-row">
+            <span class="insight-phase-dot ${p}"></span>
+            <span><strong>${phaseLabels[p]}:</strong> ${detail}</span></div>`;
+        if (ps.exercise_tip) {
+            html += `<div class="insight-row" style="padding-left:22px;font-size:12px;color:var(--accent-green)">
+                <i data-lucide="lightbulb" style="width:12px;height:12px;flex-shrink:0"></i>&nbsp;${ps.exercise_tip}</div>`;
+        }
+    });
+
+    if (data.top_symptoms && data.top_symptoms.length > 0) {
+        html += '<div class="insight-row" style="border-bottom:none"><strong>Top symptoms (90 days):</strong></div>';
+        const maxCount = data.top_symptoms[0].count;
+        data.top_symptoms.forEach(s => {
+            const pct = Math.max(10, (s.count / maxCount) * 100);
+            html += `<div class="insight-row" style="flex-direction:column;align-items:flex-start;padding:4px 0;border-bottom:none">
+                <span>${s.symptom} (${s.count}x)</span>
+                <div class="top-symptom-bar" style="width:${pct}%"></div></div>`;
+        });
+    }
+
+    el.innerHTML = html;
+    lucide.createIcons();
+}
+
+// ─── Discreet Mode ─────────────────────────────────────────
+
+async function toggleDiscreetMode() {
+    const res = await apiPost('/api/period/discreet', new FormData());
+    if (res) {
+        DISCREET_MODE = res.discreet_mode;
+        applyDiscreetMode();
+        showToast(DISCREET_MODE ? 'Discreet mode on' : 'Discreet mode off');
+    }
+}
+
+function applyDiscreetMode() {
+    const periodTab = document.getElementById('tab-period');
+    if (!periodTab) return;
+    periodTab.classList.toggle('discreet', !!DISCREET_MODE);
+    const icon = document.getElementById('discreetIcon');
+    if (icon) icon.setAttribute('data-lucide', DISCREET_MODE ? 'eye' : 'eye-off');
+    lucide.createIcons();
 }
 
 // ─── Trends / Charts ────────────────────────────────────────────────────────
