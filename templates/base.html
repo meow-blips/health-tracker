@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-phase="default">
+<html lang="en" data-phase="default" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,6 +32,12 @@
                     <a href="/register" class="btn btn-primary btn-sm">Get Started</a>
                 {% endif %}
             </div>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                <span class="theme-toggle-knob" id="themeKnob">
+                    <i data-lucide="moon" id="themeIconDark"></i>
+                    <i data-lucide="sun" id="themeIconLight" style="display:none"></i>
+                </span>
+            </button>
             <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
                 <i data-lucide="menu"></i>
             </button>
@@ -72,6 +78,35 @@
         </div>
     </footer>
 
+    <script>
+    (function() {
+        var saved = localStorage.getItem('ht-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+    })();
+    function toggleTheme() {
+        var html = document.documentElement;
+        var current = html.getAttribute('data-theme');
+        var next = current === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('ht-theme', next);
+        updateThemeIcon(next);
+    }
+    function updateThemeIcon(theme) {
+        var darkIcon = document.getElementById('themeIconDark');
+        var lightIcon = document.getElementById('themeIconLight');
+        if (!darkIcon || !lightIcon) return;
+        if (theme === 'light') {
+            darkIcon.style.display = 'none';
+            lightIcon.style.display = 'block';
+        } else {
+            darkIcon.style.display = 'block';
+            lightIcon.style.display = 'none';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+    });
+    </script>
     <script src="/static/js/app.js"></script>
     <script>lucide.createIcons();</script>
     {% block scripts %}{% endblock %}

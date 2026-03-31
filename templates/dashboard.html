@@ -53,16 +53,16 @@
                     <div class="activity-rings-container">
                         <svg viewBox="0 0 200 200" class="activity-rings" id="activityRings">
                             <!-- Water Ring (outer) -->
-                            <circle cx="100" cy="100" r="88" fill="none" stroke="#e2e8f0" stroke-width="12"/>
-                            <circle cx="100" cy="100" r="88" fill="none" stroke="#3b82f6" stroke-width="12"
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="#38bdf8" stroke-width="12"
                                     id="ringWater" stroke-dasharray="0 553" stroke-linecap="round" transform="rotate(-90 100 100)"/>
                             <!-- Calories Ring (middle) -->
-                            <circle cx="100" cy="100" r="72" fill="none" stroke="#e2e8f0" stroke-width="12"/>
-                            <circle cx="100" cy="100" r="72" fill="none" stroke="#f59e0b" stroke-width="12"
+                            <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+                            <circle cx="100" cy="100" r="72" fill="none" stroke="#fbbf24" stroke-width="12"
                                     id="ringCalories" stroke-dasharray="0 452" stroke-linecap="round" transform="rotate(-90 100 100)"/>
                             <!-- Exercise Ring (inner) -->
-                            <circle cx="100" cy="100" r="56" fill="none" stroke="#e2e8f0" stroke-width="12"/>
-                            <circle cx="100" cy="100" r="56" fill="none" stroke="#22c55e" stroke-width="12"
+                            <circle cx="100" cy="100" r="56" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+                            <circle cx="100" cy="100" r="56" fill="none" stroke="#34d399" stroke-width="12"
                                     id="ringExercise" stroke-dasharray="0 352" stroke-linecap="round" transform="rotate(-90 100 100)"/>
                         </svg>
                         <div class="ring-center-label" id="ringCenter">
@@ -71,16 +71,16 @@
                         </div>
                     </div>
                     <div class="ring-legend">
-                        <div class="legend-item"><span class="dot" style="background:#3b82f6"></span> Water <strong id="legendWater">0/8</strong></div>
-                        <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Calories <strong id="legendCal">0</strong></div>
-                        <div class="legend-item"><span class="dot" style="background:#22c55e"></span> Exercise <strong id="legendEx">0 min</strong></div>
+                        <div class="legend-item"><span class="dot" style="background:#38bdf8"></span> Water <strong id="legendWater">0.0L</strong></div>
+                        <div class="legend-item"><span class="dot" style="background:#fbbf24"></span> Calories <strong id="legendCal">0</strong></div>
+                        <div class="legend-item"><span class="dot" style="background:#34d399"></span> Exercise <strong id="legendEx">0 min</strong></div>
                     </div>
                 </div>
 
                 <!-- Quick Stats Grid -->
                 <div class="quick-stats">
                     <div class="stat-card">
-                        <div class="stat-icon" style="background:rgba(59,130,246,.1);color:#3b82f6">
+                        <div class="stat-icon" style="background:rgba(56,189,248,.1);color:#38bdf8">
                             <i data-lucide="droplets"></i>
                         </div>
                         <div class="stat-info">
@@ -92,7 +92,7 @@
                         </button>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background:rgba(245,158,11,.1);color:#f59e0b">
+                        <div class="stat-icon" style="background:rgba(251,191,36,.1);color:#fbbf24">
                             <i data-lucide="flame"></i>
                         </div>
                         <div class="stat-info">
@@ -101,7 +101,7 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background:rgba(34,197,94,.1);color:#22c55e">
+                        <div class="stat-icon" style="background:rgba(52,211,153,.1);color:#34d399">
                             <i data-lucide="dumbbell"></i>
                         </div>
                         <div class="stat-info">
@@ -110,7 +110,7 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background:rgba(139,92,246,.1);color:#8b5cf6">
+                        <div class="stat-icon" style="background:rgba(167,139,250,.1);color:#a78bfa">
                             <i data-lucide="moon"></i>
                         </div>
                         <div class="stat-info">
@@ -177,58 +177,41 @@
             <div class="log-grid">
                 <!-- Water -->
                 <div class="card log-card">
-                    <h3><i data-lucide="droplets" style="width:18px;height:18px;color:#3b82f6"></i> Log Water</h3>
-                    <form onsubmit="return logWater(event)">
-                        <div class="water-quick">
-                            <button type="button" class="water-btn" onclick="addWater(1)">+1 Glass</button>
-                            <button type="button" class="water-btn" onclick="addWater(2)">+2 Glasses</button>
-                            <button type="button" class="water-btn" onclick="addWater(3)">+3 Glasses</button>
+                    <h3><i data-lucide="droplets" style="width:18px;height:18px;color:#38bdf8"></i> Log Water</h3>
+                    <div class="water-progress-wrap">
+                        <div class="water-ring-mini">
+                            <svg viewBox="0 0 80 80" width="80" height="80">
+                                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="6"/>
+                                <circle cx="40" cy="40" r="34" fill="none" stroke="#38bdf8" stroke-width="6"
+                                    id="waterRingMini" stroke-dasharray="0 213.6" stroke-linecap="round" transform="rotate(-90 40 40)"/>
+                            </svg>
+                            <span class="water-ring-count" id="waterRingCount">0</span>
                         </div>
-                        <p class="water-total">Today: <strong id="waterTotal">0</strong> glasses (<span id="waterMl">0</span> ml)</p>
-                    </form>
-                </div>
-
-                <!-- Calories -->
-                <div class="card log-card">
-                    <h3><i data-lucide="flame" style="width:18px;height:18px;color:#f59e0b"></i> Log Meal</h3>
-                    <form onsubmit="return logCalories(event)" id="calorieForm">
-                        <div class="form-group">
-                            <select name="meal_type" required>
-                                <option value="breakfast">Breakfast</option>
-                                <option value="lunch">Lunch</option>
-                                <option value="dinner">Dinner</option>
-                                <option value="snack">Snack</option>
-                            </select>
+                        <div class="water-info">
+                            <p class="water-total-big"><strong id="waterLiters">0.0</strong> / <span id="waterGoalLiters">3.0</span> L</p>
+                            <p class="water-ml-sub"><span id="waterMl">0</span> ml today (max 6L)</p>
                         </div>
-                        <div class="form-group">
-                            <input type="text" name="description" placeholder="e.g., 2 eggs and toast" required>
-                        </div>
-                        <div class="form-row-2col">
-                            <div class="form-group">
-                                <input type="number" name="calories" placeholder="Calories" required min="0">
-                            </div>
-                            <div class="form-group">
-                                <input type="number" name="protein_g" placeholder="Protein (g)" min="0" step="0.1">
-                            </div>
-                        </div>
-                        <div class="form-row-2col">
-                            <div class="form-group">
-                                <input type="number" name="carbs_g" placeholder="Carbs (g)" min="0" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <input type="number" name="fat_g" placeholder="Fat (g)" min="0" step="0.1">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-block">Add Meal</button>
-                    </form>
-                    <div class="meal-list" id="mealList"></div>
+                    </div>
+                    <div class="water-quick">
+                        <button type="button" class="water-btn" onclick="addWaterMl(250)">
+                            <i data-lucide="plus" style="width:14px;height:14px"></i> 250 ml
+                        </button>
+                        <button type="button" class="water-btn water-btn-accent" onclick="addWaterMl(500)">
+                            <i data-lucide="plus" style="width:14px;height:14px"></i> 500 ml
+                        </button>
+                        <button type="button" class="water-btn" onclick="addWaterMl(1000)">
+                            <i data-lucide="plus" style="width:14px;height:14px"></i> 1 Liter
+                        </button>
+                    </div>
+                    <p class="water-limit-msg" id="waterLimitMsg" style="display:none">Daily limit reached (6L)</p>
                 </div>
 
                 <!-- Exercise -->
                 <div class="card log-card">
-                    <h3><i data-lucide="dumbbell" style="width:18px;height:18px;color:#22c55e"></i> Log Exercise</h3>
+                    <h3><i data-lucide="dumbbell" style="width:18px;height:18px;color:#34d399"></i> Log Exercise</h3>
                     <form onsubmit="return logExercise(event)" id="exerciseForm">
                         <div class="form-group">
+                            <label>Activity Type</label>
                             <select name="exercise_type" required>
                                 <option value="walking">Walking</option>
                                 <option value="running">Running</option>
@@ -242,29 +225,43 @@
                         </div>
                         <div class="form-row-2col">
                             <div class="form-group">
-                                <input type="number" name="duration_min" placeholder="Duration (min)" required min="1">
+                                <label>Duration</label>
+                                <div class="input-with-unit">
+                                    <input type="number" name="duration_min" placeholder="30" required min="1">
+                                    <span class="input-unit">min</span>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <input type="number" name="calories_burned" placeholder="Calories burned" min="0">
+                                <label>Calories Burned</label>
+                                <div class="input-with-unit">
+                                    <input type="number" name="calories_burned" placeholder="200" min="0">
+                                    <span class="input-unit">kcal</span>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
-                            <input type="text" name="notes" placeholder="Notes (optional)">
+                            <label>Notes</label>
+                            <input type="text" name="notes" placeholder="How did it go?">
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block">Log Exercise</button>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i data-lucide="check-circle" style="width:16px;height:16px"></i> Log Exercise
+                        </button>
                     </form>
                 </div>
 
                 <!-- Sleep -->
                 <div class="card log-card">
-                    <h3><i data-lucide="moon" style="width:18px;height:18px;color:#8b5cf6"></i> Log Sleep</h3>
+                    <h3><i data-lucide="moon" style="width:18px;height:18px;color:#a78bfa"></i> Log Sleep</h3>
                     <form onsubmit="return logSleep(event)" id="sleepForm">
                         <div class="form-group">
                             <label>Hours Slept</label>
-                            <input type="number" name="hours" placeholder="8" min="0" max="24" step="0.5" required>
+                            <div class="input-with-unit">
+                                <input type="number" name="hours" placeholder="8" min="0" max="24" step="0.5" required>
+                                <span class="input-unit">hrs</span>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label>Quality (1-5)</label>
+                            <label>Sleep Quality</label>
                             <div class="star-rating" id="sleepStars">
                                 <button type="button" class="star" data-val="1" onclick="setSleepQuality(1)">★</button>
                                 <button type="button" class="star" data-val="2" onclick="setSleepQuality(2)">★</button>
@@ -274,64 +271,75 @@
                             </div>
                             <input type="hidden" name="quality" id="sleepQualityInput" value="3">
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block">Log Sleep</button>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i data-lucide="check-circle" style="width:16px;height:16px"></i> Log Sleep
+                        </button>
                     </form>
                 </div>
 
                 <!-- Mood -->
                 <div class="card log-card">
-                    <h3><i data-lucide="smile" style="width:18px;height:18px;color:#ec4899"></i> Log Mood</h3>
+                    <h3><i data-lucide="smile" style="width:18px;height:18px;color:#f472b6"></i> Log Mood</h3>
                     <form onsubmit="return logMood(event)" id="moodForm">
-                        <div class="form-row-2col">
-                            <div class="form-group">
-                                <label>Mood (1-5)</label>
-                                <input type="range" name="mood" min="1" max="5" value="3">
-                            </div>
-                            <div class="form-group">
-                                <label>Energy (1-5)</label>
-                                <input type="range" name="energy" min="1" max="5" value="3">
-                            </div>
+                        <div class="form-group">
+                            <label>Mood <span class="range-val" id="moodVal">3</span>/5</label>
+                            <input type="range" name="mood" min="1" max="5" value="3" oninput="document.getElementById('moodVal').textContent=this.value">
                         </div>
                         <div class="form-group">
-                            <label>Stress (1=Low, 5=High)</label>
-                            <input type="range" name="stress" min="1" max="5" value="3">
+                            <label>Energy <span class="range-val" id="energyVal">3</span>/5</label>
+                            <input type="range" name="energy" min="1" max="5" value="3" oninput="document.getElementById('energyVal').textContent=this.value">
                         </div>
                         <div class="form-group">
-                            <input type="text" name="notes" placeholder="How are you feeling?">
+                            <label>Stress <span class="range-val" id="stressVal">3</span>/5</label>
+                            <input type="range" name="stress" min="1" max="5" value="3" oninput="document.getElementById('stressVal').textContent=this.value">
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block">Log Mood</button>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input type="text" name="notes" placeholder="How are you feeling today?">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i data-lucide="check-circle" style="width:16px;height:16px"></i> Log Mood
+                        </button>
                     </form>
                 </div>
 
                 <!-- Allergies -->
                 <div class="card log-card">
-                    <h3><i data-lucide="shield-alert" style="width:18px;height:18px;color:#ef4444"></i> Manage Allergies</h3>
+                    <h3><i data-lucide="shield-alert" style="width:18px;height:18px;color:#fb7185"></i> Manage Allergies</h3>
                     <form onsubmit="return addAllergy(event)" id="allergyForm">
                         <div class="form-group">
-                            <input type="text" name="allergen" placeholder="Allergen (e.g., Peanuts)" required>
+                            <label>Allergen</label>
+                            <input type="text" name="allergen" placeholder="e.g., Peanuts, Shellfish, Latex" required>
                         </div>
                         <div class="form-row-2col">
                             <div class="form-group">
-                                <select name="severity">
+                                <label>Severity</label>
+                                <select name="severity" required>
+                                    <option value="" disabled selected>Select severity</option>
                                     <option value="mild">Mild</option>
-                                    <option value="moderate" selected>Moderate</option>
+                                    <option value="moderate">Moderate</option>
                                     <option value="severe">Severe</option>
                                     <option value="life-threatening">Life-threatening</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <input type="text" name="reaction" placeholder="Reaction">
+                                <label>Reaction</label>
+                                <input type="text" name="reaction" placeholder="e.g., Hives, Swelling">
                             </div>
                         </div>
                         <div class="form-row-2col">
                             <div class="form-group">
-                                <input type="text" name="emergency_contact" placeholder="Emergency contact name">
+                                <label>Emergency Contact</label>
+                                <input type="text" name="emergency_contact" placeholder="Contact name">
                             </div>
                             <div class="form-group">
-                                <input type="text" name="emergency_phone" placeholder="Phone number">
+                                <label>Phone</label>
+                                <input type="text" name="emergency_phone" placeholder="+1 555-1234">
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block">Add Allergy</button>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i data-lucide="plus-circle" style="width:16px;height:16px"></i> Add Allergy
+                        </button>
                     </form>
                     <div class="allergy-list" id="allergyList"></div>
                 </div>
@@ -364,14 +372,17 @@
                     <form onsubmit="return addMedication(event)" id="medForm">
                         <div class="form-row-2col">
                             <div class="form-group">
-                                <input type="text" name="name" placeholder="Medication name" required>
+                                <label>Medication Name</label>
+                                <input type="text" name="name" placeholder="e.g., Vitamin D, Ibuprofen" required>
                             </div>
                             <div class="form-group">
-                                <input type="text" name="dosage" placeholder="Dosage (e.g., 500mg)">
+                                <label>Dosage</label>
+                                <input type="text" name="dosage" placeholder="e.g., 500mg, 10ml">
                             </div>
                         </div>
                         <div class="form-row-2col">
                             <div class="form-group">
+                                <label>Frequency</label>
                                 <select name="frequency">
                                     <option value="daily">Daily</option>
                                     <option value="twice-daily">Twice Daily</option>
@@ -380,6 +391,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
+                                <label>Time of Day</label>
                                 <select name="time_of_day">
                                     <option value="morning">Morning</option>
                                     <option value="afternoon">Afternoon</option>
@@ -389,9 +401,15 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <input type="number" name="pills_remaining" placeholder="Pills remaining" min="0" value="30">
+                            <label>Pills Remaining</label>
+                            <div class="input-with-unit">
+                                <input type="number" name="pills_remaining" placeholder="30" min="0" value="30">
+                                <span class="input-unit">pills</span>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block">Add Medication</button>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i data-lucide="plus-circle" style="width:16px;height:16px"></i> Add Medication
+                        </button>
                     </form>
                 </div>
                 <div class="card">

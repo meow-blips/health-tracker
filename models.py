@@ -46,6 +46,8 @@ class User(Base):
     period_logs = relationship("PeriodLog", back_populates="user", cascade="all, delete-orphan")
     allergies = relationship("Allergy", back_populates="user", cascade="all, delete-orphan")
     mood_logs = relationship("MoodLog", back_populates="user", cascade="all, delete-orphan")
+    goals = relationship("GoalSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    weight_logs = relationship("WeightLog", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def bmi(self):
@@ -193,3 +195,29 @@ class MoodLog(Base):
     notes = Column(Text)
 
     user = relationship("User", back_populates="mood_logs")
+
+
+class GoalSettings(Base):
+    __tablename__ = "goal_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), unique=True, nullable=False)
+    water_ml = Column(Integer, default=3000)
+    calories = Column(Integer, default=2000)
+    exercise_min = Column(Integer, default=30)
+    sleep_hours = Column(Float, default=8.0)
+
+    user = relationship("User", back_populates="goals")
+
+
+class WeightLog(Base):
+    __tablename__ = "weight_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    date = Column(Date, nullable=False)
+    weight_kg = Column(Float, nullable=False)
+    bmi = Column(Float, nullable=True)
+    notes = Column(Text, default="")
+
+    user = relationship("User", back_populates="weight_logs")

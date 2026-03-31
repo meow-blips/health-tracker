@@ -164,7 +164,7 @@ function switchTab(name) {
     if (name === 'meds') loadMedications();
     if (name === 'period') loadPeriodPhase();
     if (name === 'overview') refreshOverview();
-    if (name === 'log') { loadCaloriesToday(); loadAllergies(); }
+    if (name === 'log') { loadAllergies(); }
 
     lucide.createIcons();
 }
@@ -174,7 +174,6 @@ function switchTab(name) {
 async function initDashboard() {
     await refreshOverview();
     loadHeatmap();
-    loadCaloriesToday();
     loadAllergies();
     if (typeof USER_GENDER !== 'undefined' && USER_GENDER === 'female') loadPeriodPhase();
     updateBmiGauge();
@@ -187,27 +186,23 @@ async function refreshOverview() {
     const data = await apiGet('/api/dashboard/summary');
     if (!data) return;
 
-    const waterPct = Math.min(data.water_glasses / data.water_goal, 1);
-    const calPct = Math.min(data.calories_total / data.calories_goal, 1);
+    waterGoalMl = data.water_goal_ml || 3000;
+    const waterPct = Math.min(data.water_ml / waterGoalMl, 1);
     const exPct = Math.min(data.exercise_min / data.exercise_goal, 1);
-    const overall = Math.round((waterPct + calPct + exPct) / 3 * 100);
+    const overall = Math.round((waterPct + exPct) / 2 * 100);
 
     animateRing('ringWater', waterPct, 88);
-    animateRing('ringCalories', calPct, 72);
     animateRing('ringExercise', exPct, 56);
 
     const pctEl = document.getElementById('ringPct');
     if (pctEl) pctEl.textContent = overall + '%';
 
-    setText('legendWater', `${data.water_glasses}/${data.water_goal}`);
-    setText('legendCal', `${Math.round(data.calories_total)}`);
+    const wLiters = (data.water_ml / 1000).toFixed(1);
+    setText('legendWater', `${wLiters}L`);
     setText('legendEx', `${Math.round(data.exercise_min)} min`);
-    setText('statWater', data.water_glasses);
-    setText('statCal', Math.round(data.calories_total));
     setText('statEx', Math.round(data.exercise_min));
     setText('statSleep', data.sleep_hours);
-    setText('waterTotal', data.water_glasses);
-    setText('waterMl', data.water_glasses * 250);
+    updateWaterUI(data.water_ml);
 
     if (data.mood > 0) {
         document.querySelectorAll('.mood-btn').forEach(b => {
@@ -259,68 +254,60 @@ async function loadHeatmap() {
     }
 }
 
-// ─── Water ──────────────────────────────────────────────────────────────────
+// ─── Water (liter-based) ────────────────────────────────────────────────────
 
-async function addWater(glasses) {
+let waterGoalMl = 3000;
+
+function updateWaterUI(ml) {
+    const liters = (ml / 1000).toFixed(1);
+    const goalLiters = (waterGoalMl / 1000).toFixed(1);
+    setText('waterLiters', liters);
+    setText('waterMl', ml);
+    setText('waterGoalLiters', goalLiters);
+    setText('waterRingCount', liters);
+    setText('statWater', liters + 'L');
+
+    const pct = Math.min(ml / waterGoalMl, 1);
+    const ring = document.getElementById('waterRingMini');
+    if (ring) {
+        const circ = 2 * Math.PI * 34;
+        ring.style.transition = 'stroke-dasharray .6s ease';
+        ring.setAttribute('stroke-dasharray', `${pct * circ} ${circ}`);
+    }
+
+    const limitMsg = document.getElementById('waterLimitMsg');
+    if (limitMsg) limitMsg.style.display = ml >= 6000 ? 'block' : 'none';
+
+    document.querySelectorAll('.water-btn').forEach(btn => {
+        btn.disabled = ml >= 6000;
+        btn.style.opacity = ml >= 6000 ? '0.4' : '1';
+    });
+}
+
+async function addWaterMl(amount) {
     const fd = new FormData();
-    fd.append('glasses', glasses);
+    fd.append('ml', amount);
     const data = await apiPost('/api/water', fd);
     if (data) {
-        setText('waterTotal', data.glasses);
-        setText('waterMl', data.ml);
-        showToast(`+${glasses} glass${glasses > 1 ? 'es' : ''} logged!`);
+        updateWaterUI(data.ml);
+        if (data.at_limit) {
+            showToast('Daily water limit reached (6L)', 'error');
+        } else {
+            const added = amount >= 1000 ? `${amount/1000}L` : `${amount}ml`;
+            showToast(`+${added} water logged!`);
+        }
         refreshOverview();
     }
 }
 
 async function quickLogWater() {
-    await addWater(1);
+    await addWaterMl(250);
 }
 
 function logWater(e) {
     e.preventDefault();
-    addWater(1);
+    addWaterMl(250);
     return false;
-}
-
-// ─── Calories ───────────────────────────────────────────────────────────────
-
-async function logCalories(e) {
-    e.preventDefault();
-    const form = document.getElementById('calorieForm');
-    const fd = new FormData(form);
-    const data = await apiPost('/api/calories', fd);
-    if (data) {
-        form.reset();
-        showToast(`Meal logged: ${data.calories} cal`);
-        loadCaloriesToday();
-        refreshOverview();
-    }
-    return false;
-}
-
-async function loadCaloriesToday() {
-    const data = await apiGet('/api/calories/today');
-    if (!data) return;
-    const list = document.getElementById('mealList');
-    if (!list) return;
-    if (data.meals.length === 0) {
-        list.innerHTML = '<p class="empty-state">No meals logged today</p>';
-        return;
-    }
-    list.innerHTML = data.meals.map(m => `
-        <div class="meal-item">
-            <span>${m.meal}: ${m.desc}</span>
-            <span class="meal-cal">${m.cal} cal</span>
-            <button class="delete-btn" onclick="deleteCalorie(${m.id})">&times;</button>
-        </div>
-    `).join('');
-}
-
-async function deleteCalorie(id) {
-    await apiDelete(`/api/calories/${id}`);
-    loadCaloriesToday();
-    refreshOverview();
 }
 
 // ─── Exercise ───────────────────────────────────────────────────────────────
@@ -559,17 +546,20 @@ async function loadTrends() {
     const labels = data.map(d => d.label);
     const calories = data.map(d => d.calories);
     const exercise = data.map(d => d.exercise_burned);
-    const water = data.map(d => d.water);
+    const water = data.map(d => d.water_ml ? (d.water_ml / 1000).toFixed(1) : 0);
     const sleep = data.map(d => d.sleep);
 
-    const chartFont = { family: "'Inter', sans-serif" };
+    const chartFont = { family: "'Outfit', sans-serif", weight: '600' };
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const gridColor = isLight ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)';
+    const tickColor = isLight ? 'rgba(90,80,120,.7)' : 'rgba(165,160,208,.7)';
     const commonOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: chartFont } } },
+        plugins: { legend: { labels: { font: chartFont, color: tickColor } } },
         scales: {
-            x: { grid: { display: false }, ticks: { font: chartFont } },
-            y: { beginAtZero: true, ticks: { font: chartFont } }
+            x: { grid: { color: gridColor }, ticks: { font: chartFont, color: tickColor } },
+            y: { beginAtZero: true, grid: { color: gridColor }, ticks: { font: chartFont, color: tickColor } }
         }
     };
 
@@ -584,16 +574,16 @@ async function loadTrends() {
                     {
                         label: 'Calories Consumed',
                         data: calories,
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245,158,11,.1)',
-                        tension: 0.4, fill: true,
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251,191,36,.1)',
+                        tension: 0.4, fill: true, borderWidth: 3,
                     },
                     {
                         label: 'Calories Burned',
                         data: exercise,
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34,197,94,.1)',
-                        tension: 0.4, fill: true,
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52,211,153,.1)',
+                        tension: 0.4, fill: true, borderWidth: 3,
                     }
                 ]
             },
@@ -609,10 +599,11 @@ async function loadTrends() {
             data: {
                 labels,
                 datasets: [{
-                    label: 'Glasses',
+                    label: 'Liters',
                     data: water,
-                    backgroundColor: 'rgba(59,130,246,.6)',
-                    borderRadius: 6,
+                    backgroundColor: 'rgba(56,189,248,.5)',
+                    hoverBackgroundColor: 'rgba(56,189,248,.8)',
+                    borderRadius: 8,
                 }]
             },
             options: { ...commonOptions, plugins: { ...commonOptions.plugins, legend: { display: false } } },
@@ -629,8 +620,9 @@ async function loadTrends() {
                 datasets: [{
                     label: 'Hours',
                     data: sleep,
-                    backgroundColor: 'rgba(139,92,246,.6)',
-                    borderRadius: 6,
+                    backgroundColor: 'rgba(167,139,250,.5)',
+                    hoverBackgroundColor: 'rgba(167,139,250,.8)',
+                    borderRadius: 8,
                 }]
             },
             options: { ...commonOptions, plugins: { ...commonOptions.plugins, legend: { display: false } } },
